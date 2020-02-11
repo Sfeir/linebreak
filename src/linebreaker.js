@@ -1,13 +1,39 @@
-const UnicodeTrie = require('unicode-trie');
-const fs = require('fs');
-const base64 = require('base64-js');
-const { BK, CR, LF, NL, SG, WJ, SP, ZWJ, BA, HY, NS, AI, AL, CJ, HL, RI, SA, XX } = require('./classes');
-const { DI_BRK, IN_BRK, CI_BRK, CP_BRK, PR_BRK, pairTable } = require('./pairs');
+const UnicodeTrie = require("unicode-trie");
+// const fs = require('fs');
+const base64 = require("base64-js");
+const {
+  BK,
+  CR,
+  LF,
+  NL,
+  SG,
+  WJ,
+  SP,
+  ZWJ,
+  BA,
+  HY,
+  NS,
+  AI,
+  AL,
+  CJ,
+  HL,
+  RI,
+  SA,
+  XX
+} = require("./classes");
+const {
+  DI_BRK,
+  IN_BRK,
+  CI_BRK,
+  CP_BRK,
+  PR_BRK,
+  pairTable
+} = require("./pairs");
 
-const data = base64.toByteArray(fs.readFileSync(__dirname + '/classes.trie', 'base64'));
+const data = [];
 const classTrie = new UnicodeTrie(data);
 
-const mapClass = function (c) {
+const mapClass = function(c) {
   switch (c) {
     case AI:
       return AL;
@@ -25,7 +51,7 @@ const mapClass = function (c) {
   }
 };
 
-const mapFirst = function (c) {
+const mapFirst = function(c) {
   switch (c) {
     case LF:
     case NL:
@@ -63,9 +89,9 @@ class LineBreaker {
     const next = this.string.charCodeAt(this.pos);
 
     // If a surrogate pair
-    if ((0xd800 <= code && code <= 0xdbff) && (0xdc00 <= next && next <= 0xdfff)) {
+    if (0xd800 <= code && code <= 0xdbff && 0xdc00 <= next && next <= 0xdfff) {
       this.pos++;
-      return ((code - 0xd800) * 0x400) + (next - 0xdc00) + 0x10000;
+      return (code - 0xd800) * 0x400 + (next - 0xdc00) + 0x10000;
     }
 
     return code;
@@ -134,13 +160,13 @@ class LineBreaker {
       shouldBreak = false;
       this.LB21a = false;
     } else {
-      this.LB21a = (this.curClass === HL);
+      this.LB21a = this.curClass === HL;
     }
 
     // Rule LB30a
     if (this.curClass === RI) {
       this.LB30a++;
-      if (this.LB30a == 2 && (this.nextClass === RI)) {
+      if (this.LB30a == 2 && this.nextClass === RI) {
         shouldBreak = true;
         this.LB30a = 0;
       }
@@ -159,7 +185,7 @@ class LineBreaker {
       let firstClass = this.nextCharClass();
       this.curClass = mapFirst(firstClass);
       this.nextClass = firstClass;
-      this.LB8a = (firstClass === ZWJ);
+      this.LB8a = firstClass === ZWJ;
       this.LB30a = 0;
     }
 
@@ -169,7 +195,10 @@ class LineBreaker {
       this.nextClass = this.nextCharClass();
 
       // explicit newline
-      if ((this.curClass === BK) || ((this.curClass === CR) && (this.nextClass !== LF))) {
+      if (
+        this.curClass === BK ||
+        (this.curClass === CR && this.nextClass !== LF)
+      ) {
         this.curClass = mapFirst(mapClass(this.nextClass));
         return new Break(this.lastPos, true);
       }
@@ -181,7 +210,7 @@ class LineBreaker {
       }
 
       // Rule LB8a
-      this.LB8a = (this.nextClass === ZWJ);
+      this.LB8a = this.nextClass === ZWJ;
 
       if (shouldBreak) {
         return new Break(this.lastPos);
